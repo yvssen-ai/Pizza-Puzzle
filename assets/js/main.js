@@ -1,0 +1,496 @@
+/* Pizza Puzzle — site interactions & animations */
+(() => {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hasGSAP = typeof window.gsap !== 'undefined';
+  if (hasGSAP && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+
+  /* ---------- footer year ---------- */
+  const yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* ---------- header scroll state + top progress rail ---------- */
+  const header = document.getElementById('siteHeader');
+  const pageProgress = document.getElementById('pageProgress');
+
+  function onScroll() {
+    if (header) header.classList.toggle('is-scrolled', window.scrollY > 20);
+    if (pageProgress) {
+      const h = document.documentElement;
+      const scrollable = h.scrollHeight - h.clientHeight;
+      const pct = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+      pageProgress.style.width = pct + '%';
+    }
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ---------- mobile nav ---------- */
+  const navToggle = document.getElementById('navToggle');
+  const siteNav = document.getElementById('siteNav');
+  function closeNav() {
+    navToggle?.classList.remove('is-open');
+    siteNav?.classList.remove('is-open');
+    navToggle?.setAttribute('aria-expanded', 'false');
+  }
+  navToggle?.addEventListener('click', () => {
+    const open = siteNav.classList.toggle('is-open');
+    navToggle.classList.toggle('is-open', open);
+    navToggle.setAttribute('aria-expanded', String(open));
+  });
+  siteNav?.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
+
+  /* ---------- hero entrance + parallax ---------- */
+  if (hasGSAP) {
+    gsap.timeline({ delay: 0.15 })
+      .from('[data-anim="hero"]', {
+        y: 34, opacity: 0, duration: 0.9, ease: 'power3.out', stagger: 0.12
+      });
+
+    const heroImg = document.getElementById('heroImg');
+    if (heroImg && !reduceMotion) {
+      gsap.to(heroImg, {
+        yPercent: 10,
+        ease: 'none',
+        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }
+      });
+    }
+
+    /* generic scroll reveals */
+    gsap.utils.toArray('[data-reveal]').forEach((el) => {
+      gsap.from(el, {
+        y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 88%' }
+      });
+    });
+
+    gsap.utils.toArray('.strip__item').forEach((el, i) => {
+      gsap.from(el, {
+        y: 24, opacity: 0, duration: 0.7, delay: i * 0.06, ease: 'power2.out',
+        scrollTrigger: { trigger: '.strip', start: 'top 85%' }
+      });
+    });
+  }
+
+  /* ==========================================================
+     CRAFT YOUR PIZZA — builder
+     ========================================================== */
+  const STEPS = [
+    {
+      key: 'size', title: 'Size', hint: 'How hungry is your mood today?', type: 'single',
+      options: [
+        { id: 'personal', name: 'Personal 8"', price: 6.5, icon: '🍕', scale: 0.72 },
+        { id: 'medium', name: 'Medium 12"', price: 9.5, icon: '🍕', scale: 0.86 },
+        { id: 'large', name: 'Large 16"', price: 12.5, icon: '🍕', scale: 1 },
+        { id: 'family', name: 'Family 20"', price: 16.5, icon: '🍕', scale: 1.14 }
+      ]
+    },
+    {
+      key: 'dough', title: 'Dough', hint: 'Pick the base for your puzzle.', type: 'single',
+      options: [
+        { id: 'classic', name: 'Hand-Tossed', price: 0, icon: '🥖', crust: 'radial-gradient(circle at 42% 38%, #f2c878, #d99a3f 78%, #b97a2c 100%)' },
+        { id: 'thin', name: 'Thin & Crispy', price: 0, icon: '🫓', crust: 'radial-gradient(circle at 42% 38%, #f7dca0, #e2ad57 78%, #c68b37 100%)' },
+        { id: 'stuffed', name: 'Cheese-Stuffed', price: 2.5, icon: '🧀', crust: 'radial-gradient(circle at 42% 38%, #ffe9a8, #eec25a 78%, #d59c3c 100%)' },
+        { id: 'wheat', name: 'Whole Wheat', price: 1, icon: '🌾', crust: 'radial-gradient(circle at 42% 38%, #d9b878, #b6863f 78%, #8f6529 100%)' }
+      ]
+    },
+    {
+      key: 'sauce', title: 'Sauce', hint: 'Set the mood underneath it all.', type: 'single',
+      options: [
+        { id: 'tomato', name: 'Classic Tomato', price: 0, icon: '🍅', color: '#c73a1f' },
+        { id: 'bbq', name: 'BBQ Swirl', price: 1, icon: '🥩', color: '#7a3418' },
+        { id: 'garlic', name: 'Garlic Cream', price: 1, icon: '🧄', color: '#e8dcc0' },
+        { id: 'arrabbiata', name: 'Spicy Arrabbiata', price: 1, icon: '🌶️', color: '#a11e10' }
+      ]
+    },
+    {
+      key: 'cheese', title: 'Cheese', hint: 'Every puzzle needs the right melt.', type: 'single',
+      options: [
+        { id: 'mozzarella', name: 'Mozzarella', price: 0, icon: '🧀', color: '#f4d883' },
+        { id: 'extra', name: 'Extra Cheese', price: 1.5, icon: '🧈', color: '#f7e18f' },
+        { id: 'cheddar', name: 'Cheddar Blend', price: 1.5, icon: '🟠', color: '#eeb454' },
+        { id: 'vegan', name: 'Vegan Cheese', price: 2, icon: '🌱', color: '#e7e2a8' }
+      ]
+    },
+    {
+      key: 'toppings', title: 'Toppings', hint: 'Snap in up to 6 topping pieces.', type: 'multi', max: 6,
+      options: [
+        { id: 'pepperoni', name: 'Pepperoni', price: 1.2, icon: '🍕', color: '#b3291a' },
+        { id: 'mushroom', name: 'Mushrooms', price: 0.8, icon: '🍄', color: '#caa27a' },
+        { id: 'onion', name: 'Onions', price: 0.6, icon: '🧅', color: '#e7d3ea' },
+        { id: 'olive', name: 'Olives', price: 0.8, icon: '🫒', color: '#2f2f2f' },
+        { id: 'pepper', name: 'Bell Peppers', price: 0.8, icon: '🫑', color: '#4c9a4c' },
+        { id: 'chicken', name: 'Chicken', price: 1.5, icon: '🍗', color: '#c98a4b' },
+        { id: 'jalapeno', name: 'Jalapeños', price: 0.7, icon: '🌶️', color: '#4f8f3c' },
+        { id: 'pineapple', name: 'Pineapple', price: 0.9, icon: '🍍', color: '#e8c93c' },
+        { id: 'corn', name: 'Sweetcorn', price: 0.6, icon: '🌽', color: '#f0c93f' },
+        { id: 'sausage', name: 'Sausage', price: 1.3, icon: '🌭', color: '#8a3e28' }
+      ]
+    },
+    {
+      key: 'extras', title: 'Extras', hint: 'Snap in a few final pieces.', type: 'multi', max: 4,
+      options: [
+        { id: 'dip-cheese', name: 'Cheese Dip', price: 1.2, icon: '🥣' },
+        { id: 'dip-garlic', name: 'Garlic Dip', price: 1.2, icon: '🧄' },
+        { id: 'crust-burst', name: 'Cheese Burst Edge', price: 2.5, icon: '✨' },
+        { id: 'mood-sticker', name: 'Mood Sticker', price: 0.5, icon: '🧩' }
+      ]
+    }
+  ];
+
+  const builderEl = document.getElementById('builder');
+  if (builderEl) {
+    const state = {
+      stepIndex: 0,
+      inReview: false,
+      selections: {
+        size: 'medium',
+        dough: 'classic',
+        sauce: 'tomato',
+        cheese: 'mozzarella',
+        toppings: [],
+        extras: []
+      }
+    };
+
+    const els = {
+      stepLabels: document.getElementById('stepLabels'),
+      barFill: document.getElementById('builderBarFill'),
+      body: document.querySelector('.builder__body'),
+      progress: document.querySelector('.builder__progress'),
+      review: document.getElementById('builderReview'),
+      reviewList: document.getElementById('reviewList'),
+      reviewTotal: document.getElementById('reviewTotal'),
+      stepTitle: document.getElementById('stepTitle'),
+      stepHint: document.getElementById('stepHint'),
+      optionsGrid: document.getElementById('optionsGrid'),
+      btnBack: document.getElementById('btnBack'),
+      btnNext: document.getElementById('btnNext'),
+      btnEdit: document.getElementById('btnEdit'),
+      btnOrder: document.getElementById('btnOrder'),
+      priceValue: document.getElementById('priceValue'),
+      pizza: document.getElementById('pizzaPreview'),
+      pzCrust: document.getElementById('pzCrust'),
+      pzSauce: document.getElementById('pzSauce'),
+      pzCheese: document.getElementById('pzCheese'),
+      pzToppings: document.getElementById('pzToppings')
+    };
+
+    const priceState = { value: 0 };
+
+    function findOpt(stepKey, id) {
+      const step = STEPS.find(s => s.key === stepKey);
+      return step.options.find(o => o.id === id);
+    }
+
+    function computeTotal() {
+      let total = findOpt('size', state.selections.size).price;
+      total += findOpt('dough', state.selections.dough).price;
+      total += findOpt('sauce', state.selections.sauce).price;
+      total += findOpt('cheese', state.selections.cheese).price;
+      state.selections.toppings.forEach(id => total += findOpt('toppings', id).price);
+      state.selections.extras.forEach(id => total += findOpt('extras', id).price);
+      return total;
+    }
+
+    function animatePrice() {
+      const total = computeTotal();
+      if (hasGSAP) {
+        gsap.to(priceState, {
+          value: total, duration: 0.5, ease: 'power2.out',
+          onUpdate: () => {
+            els.priceValue.textContent = '$' + priceState.value.toFixed(2);
+          }
+        });
+      } else {
+        els.priceValue.textContent = '$' + total.toFixed(2);
+      }
+    }
+
+    function renderStepLabels() {
+      els.stepLabels.innerHTML = '';
+      STEPS.forEach((s, i) => {
+        const span = document.createElement('span');
+        span.textContent = s.title;
+        if (i < state.stepIndex || state.inReview) span.classList.add('is-done');
+        if (i === state.stepIndex && !state.inReview) span.classList.add('is-active');
+        els.stepLabels.appendChild(span);
+      });
+      const reviewSpan = document.createElement('span');
+      reviewSpan.textContent = 'Review';
+      if (state.inReview) reviewSpan.classList.add('is-active');
+      els.stepLabels.appendChild(reviewSpan);
+
+      const pct = state.inReview ? 100 : (state.stepIndex / STEPS.length) * 100;
+      if (hasGSAP) gsap.to(els.barFill, { width: pct + '%', duration: 0.5, ease: 'power2.out' });
+      else els.barFill.style.width = pct + '%';
+    }
+
+    function updatePizzaVisual() {
+      const size = findOpt('size', state.selections.size);
+      const dough = findOpt('dough', state.selections.dough);
+      const sauce = findOpt('sauce', state.selections.sauce);
+      const cheese = findOpt('cheese', state.selections.cheese);
+
+      if (hasGSAP) {
+        gsap.to(els.pizza, { scale: size.scale, duration: 0.5, ease: 'back.out(1.6)' });
+      } else {
+        els.pizza.style.transform = `scale(${size.scale})`;
+      }
+      els.pzCrust.style.background = dough.crust;
+      els.pzSauce.style.background = sauce.color;
+      els.pzCheese.style.background = cheese.color;
+
+      if (hasGSAP) {
+        gsap.fromTo([els.pzCrust, els.pzSauce, els.pzCheese],
+          { opacity: 0.4 }, { opacity: 1, duration: 0.35, stagger: 0.05 });
+      }
+
+      renderToppingDots();
+    }
+
+    function renderToppingDots() {
+      els.pzToppings.innerHTML = '';
+      const ids = state.selections.toppings;
+      const ring1 = ids.slice(0, 6);
+      ids.forEach((id, i) => {
+        const t = findOpt('toppings', id);
+        const count = ids.length;
+        const angleStep = 360 / Math.max(count, 1);
+        const angle = angleStep * i - 90;
+        const radius = 30; // % from center
+        const rad = (angle * Math.PI) / 180;
+        const x = 50 + radius * Math.cos(rad);
+        const y = 50 + radius * Math.sin(rad);
+
+        const dot = document.createElement('div');
+        dot.className = 'topping-dot';
+        dot.style.left = x + '%';
+        dot.style.top = y + '%';
+        dot.style.background = t.color;
+        dot.textContent = t.icon;
+        els.pzToppings.appendChild(dot);
+
+        if (hasGSAP) {
+          gsap.to(dot, { scale: 1, duration: 0.45, delay: i * 0.05, ease: 'elastic.out(1, 0.6)' });
+        } else {
+          dot.style.transform = 'translate(-50%, -50%) scale(1)';
+        }
+      });
+    }
+
+    function renderOptions() {
+      const step = STEPS[state.stepIndex];
+      els.stepTitle.textContent = step.title;
+      els.stepHint.textContent = step.hint;
+      els.optionsGrid.innerHTML = '';
+
+      step.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opt';
+        const selected = step.type === 'single'
+          ? state.selections[step.key] === opt.id
+          : state.selections[step.key].includes(opt.id);
+        if (selected) btn.classList.add('is-selected');
+
+        btn.innerHTML = `
+          <span class="opt__icon">${opt.icon}</span>
+          <span class="opt__name">${opt.name}</span>
+          <span class="opt__price">${opt.price > 0 ? '+$' + opt.price.toFixed(2) : 'Included'}</span>
+        `;
+
+        btn.addEventListener('click', () => handleSelect(step, opt, btn));
+        els.optionsGrid.appendChild(btn);
+      });
+
+      if (hasGSAP) {
+        gsap.from(els.optionsGrid.children, { y: 16, opacity: 0, duration: 0.4, stagger: 0.04, ease: 'power2.out' });
+      }
+
+      els.btnBack.disabled = state.stepIndex === 0;
+      els.btnNext.textContent = state.stepIndex === STEPS.length - 1 ? 'Review Order' : 'Next';
+    }
+
+    function handleSelect(step, opt, btn) {
+      if (step.type === 'single') {
+        state.selections[step.key] = opt.id;
+      } else {
+        const arr = state.selections[step.key];
+        const idx = arr.indexOf(opt.id);
+        if (idx > -1) {
+          arr.splice(idx, 1);
+        } else {
+          if (arr.length >= step.max) {
+            if (hasGSAP) gsap.fromTo(btn, { x: -4 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
+            return;
+          }
+          arr.push(opt.id);
+        }
+      }
+      renderOptions();
+      updatePizzaVisual();
+      animatePrice();
+    }
+
+    function transitionPanel(dir, cb) {
+      if (!hasGSAP) { cb(); return; }
+      gsap.to(els.body, {
+        opacity: 0, x: dir * -18, duration: 0.22, ease: 'power1.in',
+        onComplete: () => {
+          cb();
+          gsap.fromTo(els.body, { opacity: 0, x: dir * 18 }, { opacity: 1, x: 0, duration: 0.32, ease: 'power2.out' });
+        }
+      });
+    }
+
+    function showReview() {
+      state.inReview = true;
+      els.body.hidden = true;
+      els.review.hidden = false;
+      els.reviewList.innerHTML = '';
+
+      const rows = [
+        ['Size', findOpt('size', state.selections.size).name],
+        ['Dough', findOpt('dough', state.selections.dough).name],
+        ['Sauce', findOpt('sauce', state.selections.sauce).name],
+        ['Cheese', findOpt('cheese', state.selections.cheese).name],
+        ['Toppings', state.selections.toppings.length ? state.selections.toppings.map(id => findOpt('toppings', id).name).join(', ') : 'None'],
+        ['Extras', state.selections.extras.length ? state.selections.extras.map(id => findOpt('extras', id).name).join(', ') : 'None']
+      ];
+      rows.forEach(([label, val]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${label}</span><b>${val}</b>`;
+        els.reviewList.appendChild(li);
+      });
+
+      const total = computeTotal();
+      els.reviewTotal.textContent = '$' + total.toFixed(2);
+      renderStepLabels();
+
+      if (hasGSAP) {
+        gsap.from(els.review.querySelector('.builder__review-card'), {
+          y: 24, opacity: 0, duration: 0.5, ease: 'power3.out'
+        });
+        gsap.from(els.reviewList.children, { opacity: 0, x: -10, duration: 0.35, stagger: 0.06, delay: 0.15 });
+      }
+    }
+
+    function backToBuilder() {
+      state.inReview = false;
+      els.review.hidden = true;
+      els.body.hidden = false;
+      renderStepLabels();
+    }
+
+    els.btnNext.addEventListener('click', () => {
+      if (state.stepIndex === STEPS.length - 1) {
+        showReview();
+        return;
+      }
+      transitionPanel(1, () => {
+        state.stepIndex++;
+        renderOptions();
+        renderStepLabels();
+      });
+    });
+
+    els.btnBack.addEventListener('click', () => {
+      if (state.stepIndex === 0) return;
+      transitionPanel(-1, () => {
+        state.stepIndex--;
+        renderOptions();
+        renderStepLabels();
+      });
+    });
+
+    els.btnEdit.addEventListener('click', backToBuilder);
+
+    els.btnOrder.addEventListener('click', () => {
+      const original = els.btnOrder.textContent;
+      els.btnOrder.textContent = 'Added! 🧩🎉';
+      els.btnOrder.disabled = true;
+      if (hasGSAP) {
+        gsap.fromTo(els.btnOrder, { scale: 1 }, { scale: 1.06, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' });
+      }
+      setTimeout(() => {
+        els.btnOrder.textContent = original;
+        els.btnOrder.disabled = false;
+      }, 2200);
+    });
+
+    // init
+    renderStepLabels();
+    renderOptions();
+    updatePizzaVisual();
+    animatePrice();
+
+    if (hasGSAP) {
+      gsap.from('#builder', {
+        y: 30, opacity: 0, duration: 0.8, ease: 'power3.out',
+        scrollTrigger: { trigger: '#builder', start: 'top 82%' }
+      });
+    }
+  }
+
+  /* ==========================================================
+     FLAVOR WHEEL — pinwheel of signature slices
+     ========================================================== */
+  const FLAVORS = [
+    { name: 'Pepperoni Rush', tag: 'Bestseller', color: '#b3291a', icon: '🍕' },
+    { name: 'BBQ Chicken', tag: 'Smoky', color: '#7a3418', icon: '🍗' },
+    { name: 'Cheese Storm', tag: 'Classic', color: '#f4d883', icon: '🧀' },
+    { name: 'Veggie Puzzle', tag: 'Garden', color: '#4c9a4c', icon: '🫑' },
+    { name: 'Spicy Arrabbiata', tag: 'Hot Mood', color: '#a11e10', icon: '🌶️' },
+    { name: 'Tropical Mood', tag: 'Sweet & Salty', color: '#e8c93c', icon: '🍍' },
+    { name: 'Garlic Cream', tag: 'Cozy', color: '#e8dcc0', icon: '🧄' },
+    { name: 'Mushroom Melt', tag: 'Earthy', color: '#caa27a', icon: '🍄' }
+  ];
+
+  const wheelSlices = document.getElementById('wheelSlices');
+  const wheelPie = document.getElementById('wheelPie');
+  if (wheelSlices && wheelPie) {
+    const n = FLAVORS.length;
+    const step = 360 / n;
+
+    const gradientStops = FLAVORS.map((f, i) => `${f.color} ${i * step}deg ${(i + 1) * step}deg`).join(', ');
+    wheelPie.style.background = `conic-gradient(${gradientStops})`;
+
+    FLAVORS.forEach((f, i) => {
+      const angle = i * step + step / 2; // mid-angle of each wedge, 0deg = top
+      const rad = (angle * Math.PI) / 180;
+      const radius = 33; // % from center
+      const x = 50 + radius * Math.sin(rad);
+      const y = 50 - radius * Math.cos(rad);
+
+      const label = document.createElement('div');
+      label.className = 'slice-label';
+      label.style.left = x + '%';
+      label.style.top = y + '%';
+
+      const inner = document.createElement('div');
+      inner.className = 'slice-label__inner';
+      inner.innerHTML = `
+        <span class="slice-label__icon">${f.icon}</span>
+        <span class="slice-label__name">${f.name}</span>
+        <span class="slice-label__tag">${f.tag}</span>
+      `;
+      label.appendChild(inner);
+      wheelSlices.appendChild(label);
+    });
+
+    if (hasGSAP) {
+      gsap.from('.slice-label', {
+        opacity: 0,
+        scale: 0.4,
+        duration: 0.6,
+        stagger: 0.09,
+        ease: 'back.out(1.6)',
+        scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
+      });
+      gsap.from(['.wheel__hub', '.wheel__pie'], {
+        opacity: 0, scale: 0.6, duration: 0.6, ease: 'back.out(2)',
+        scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
+      });
+    }
+  }
+})();
