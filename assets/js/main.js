@@ -1,6 +1,8 @@
-/* Pizza Puzzle — site interactions & animations */
+/* Pizza Puzzle — site interactions & animations
+   Animation techniques ported 1:1 from the Gorilla Pizza reference build
+   (GSAP timelines, ScrollTrigger.batch reveals, clip-path mobile menu,
+   marquee loop, scroll-scrubbed testimonial, animated stat counters). */
 (() => {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const hasGSAP = typeof window.gsap !== 'undefined';
   if (hasGSAP && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
 
@@ -13,7 +15,7 @@
   const pageProgress = document.getElementById('pageProgress');
 
   function onScroll() {
-    if (header) header.classList.toggle('is-scrolled', window.scrollY > 20);
+    if (header) header.classList.toggle('is-scrolled', window.scrollY > 24);
     if (pageProgress) {
       const h = document.documentElement;
       const scrollable = h.scrollHeight - h.clientHeight;
@@ -21,46 +23,86 @@
       pageProgress.style.width = pct + '%';
     }
   }
-  document.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  /* ---------- mobile nav ---------- */
-  const navToggle = document.getElementById('navToggle');
-  const siteNav = document.getElementById('siteNav');
-  function closeNav() {
-    navToggle?.classList.remove('is-open');
-    siteNav?.classList.remove('is-open');
-    navToggle?.setAttribute('aria-expanded', 'false');
+  if (hasGSAP && header) {
+    gsap.from(header, { y: -90, opacity: 0, duration: 1, ease: 'power3.out', delay: 0.15 });
   }
-  navToggle?.addEventListener('click', () => {
-    const open = siteNav.classList.toggle('is-open');
-    navToggle.classList.toggle('is-open', open);
-    navToggle.setAttribute('aria-expanded', String(open));
-  });
-  siteNav?.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
 
-  /* ---------- hero entrance + parallax ---------- */
-  if (hasGSAP) {
-    gsap.timeline({ delay: 0.15 })
-      .from('[data-anim="hero"]', {
-        y: 34, opacity: 0, duration: 0.9, ease: 'power3.out', stagger: 0.12
-      });
+  /* ---------- mobile nav (clip-path curtain, matching Navbar.jsx) ---------- */
+  const navToggle = document.getElementById('navToggle');
+  const mobileMenu = document.getElementById('siteNavMobile');
+  let navOpen = false;
 
-    const heroImg = document.getElementById('heroImg');
-    if (heroImg && !reduceMotion) {
-      gsap.to(heroImg, {
-        yPercent: 10,
-        ease: 'none',
-        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }
-      });
+  function setMenuOpen(open) {
+    navOpen = open;
+    navToggle?.classList.toggle('is-open', open);
+    navToggle?.setAttribute('aria-expanded', String(open));
+    if (!mobileMenu) return;
+
+    if (!hasGSAP) {
+      mobileMenu.style.display = open ? 'flex' : 'none';
+      return;
     }
 
-    /* generic scroll reveals */
-    gsap.utils.toArray('[data-reveal]').forEach((el) => {
-      gsap.from(el, {
-        y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
-        scrollTrigger: { trigger: el, start: 'top 88%' }
+    if (open) {
+      gsap.set(mobileMenu, { display: 'flex' });
+      gsap.fromTo(
+        mobileMenu,
+        { clipPath: 'inset(0% 0% 100% 0% round 0 0 24px 24px)' },
+        { clipPath: 'inset(0% 0% 0% 0% round 0 0 24px 24px)', duration: 0.55, ease: 'power4.out' }
+      );
+      gsap.fromTo(
+        mobileMenu.querySelectorAll('a'),
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, delay: 0.15, ease: 'power2.out' }
+      );
+    } else {
+      gsap.to(mobileMenu, {
+        clipPath: 'inset(0% 0% 100% 0% round 0 0 24px 24px)',
+        duration: 0.4,
+        ease: 'power3.in',
+        onComplete: () => gsap.set(mobileMenu, { display: 'none' })
       });
+    }
+  }
+
+  navToggle?.addEventListener('click', () => setMenuOpen(!navOpen));
+  mobileMenu?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenuOpen(false)));
+
+  /* ==========================================================
+     HERO — entrance timeline, parallax, rotating badge
+     ========================================================== */
+  if (hasGSAP) {
+    const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+    tl.fromTo('.hero__img', { scale: 1.25 }, { scale: 1.05, duration: 2.6, ease: 'power2.out' })
+      .from('.hero__eyebrow', { y: 24, opacity: 0, duration: 0.7 }, 0.3)
+      .from('.hero__title-line', { y: 70, opacity: 0, duration: 0.9, stagger: 0.12 }, 0.45)
+      .from('.hero__tagline', { y: 24, opacity: 0, duration: 0.6 }, '-=0.5')
+      .from('.hero__sub', { y: 24, opacity: 0, duration: 0.7 }, '-=0.45')
+      .from('.hero__actions .btn', { y: 20, opacity: 0, duration: 0.6, stagger: 0.12 }, '-=0.4')
+      .from('.hero__badge', { scale: 0, opacity: 0, duration: 0.6, ease: 'back.out(2.5)' }, '-=0.5');
+
+    gsap.to('.hero__img', {
+      yPercent: 10,
+      ease: 'none',
+      scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }
+    });
+
+    gsap.to('.hero__badge', { rotate: 360, duration: 14, repeat: -1, ease: 'none' });
+
+    /* ---------- section-head child stagger (builder-intro / featured-head pattern) ---------- */
+    gsap.utils.toArray('.section-head').forEach((el) => {
+      gsap.from(el.children, {
+        y: 30, opacity: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 85%' }
+      });
+    });
+
+    gsap.from('.cta-band__inner > *', {
+      y: 30, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out',
+      scrollTrigger: { trigger: '.cta-band', start: 'top 85%' }
     });
 
     gsap.utils.toArray('.strip__item').forEach((el, i) => {
@@ -69,6 +111,94 @@
         scrollTrigger: { trigger: '.strip', start: 'top 85%' }
       });
     });
+
+    gsap.utils.toArray('[data-reveal]').forEach((el) => {
+      if (el.classList.contains('strip__item')) return;
+      gsap.from(el, {
+        y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 88%' }
+      });
+    });
+  }
+
+  /* ==========================================================
+     MARQUEE
+     ========================================================== */
+  const MARQUEE_ITEMS = [
+    'Fresh Dough Daily',
+    'Hand-Tossed Perfection',
+    '1,000+ Combos',
+    'Baked Fresh, Never Reheated',
+    '100% Real Cheese',
+    'Craft Your Own'
+  ];
+
+  const marqueeTrack = document.getElementById('marqueeTrack');
+  if (marqueeTrack) {
+    const loop = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
+    marqueeTrack.innerHTML = loop
+      .map((item) => `<span class="marquee__item">${item}<span class="marquee__dot">🧩</span></span>`)
+      .join('');
+
+    if (hasGSAP) {
+      gsap.to(marqueeTrack, { xPercent: -50, ease: 'none', duration: 22, repeat: -1 });
+    }
+  }
+
+  /* ==========================================================
+     FEATURED PIZZAS
+     ========================================================== */
+  const PIZZAS = [
+    {
+      name: 'Pepperoni Blast',
+      price: '$15.20',
+      desc: 'Double pepperoni, mozzarella, oregano, a pinch of chili flakes.',
+      img: 'assets/img/hero-sunset.jpg'
+    },
+    {
+      name: 'Classic Cheese Storm',
+      price: '$13.50',
+      desc: 'San Marzano tomato, mozzarella, basil, olive oil.',
+      img: 'assets/img/box-slice.jpg'
+    },
+    {
+      name: 'Veggie Puzzle',
+      price: '$14.90',
+      desc: 'Bell peppers, onion, mushroom, olives, mozzarella.',
+      swatch: { color: '#4c9a4c', icon: '🫑' }
+    }
+  ];
+
+  const pizzaGrid = document.getElementById('pizzaGrid');
+  if (pizzaGrid) {
+    pizzaGrid.innerHTML = PIZZAS.map((p) => `
+      <article class="pizza-card">
+        <div class="pizza-card__media${p.swatch ? ' pizza-card__media--swatch' : ''}"
+          ${p.swatch ? `style="background:${p.swatch.color}"` : ''}>
+          ${p.img ? `<img src="${p.img}" alt="${p.name} — Pizza Puzzle" loading="lazy">` : p.swatch.icon}
+        </div>
+        <div class="pizza-card__footer">
+          <div>
+            <h3>${p.name}</h3>
+            <p>${p.desc}</p>
+          </div>
+          <div class="pizza-card__cta">
+            <span class="pizza-price">${p.price}</span>
+            <a href="#craft" class="btn btn--orange pizza-order">Order Now</a>
+          </div>
+        </div>
+      </article>
+    `).join('');
+
+    if (hasGSAP) {
+      ScrollTrigger.batch('.pizza-card', {
+        start: 'top 88%',
+        onEnter: (els) => gsap.to(els, {
+          opacity: 1, y: 0, rotate: 0, duration: 0.85, stagger: 0.15, ease: 'power3.out'
+        }),
+        once: true
+      });
+    }
   }
 
   /* ==========================================================
@@ -137,6 +267,8 @@
     }
   ];
 
+  const TOPPING_RADII = [34, 30, 37, 32, 35, 29, 36, 33, 31, 35];
+
   const builderEl = document.getElementById('builder');
   if (builderEl) {
     const state = {
@@ -156,10 +288,10 @@
       stepLabels: document.getElementById('stepLabels'),
       barFill: document.getElementById('builderBarFill'),
       body: document.querySelector('.builder__body'),
-      progress: document.querySelector('.builder__progress'),
       review: document.getElementById('builderReview'),
       reviewList: document.getElementById('reviewList'),
       reviewTotal: document.getElementById('reviewTotal'),
+      stepPanel: document.getElementById('stepPanel'),
       stepTitle: document.getElementById('stepTitle'),
       stepHint: document.getElementById('stepHint'),
       optionsGrid: document.getElementById('optionsGrid'),
@@ -176,10 +308,11 @@
     };
 
     const priceState = { value: 0 };
+    const toppingStep = STEPS.find((s) => s.key === 'toppings');
 
     function findOpt(stepKey, id) {
-      const step = STEPS.find(s => s.key === stepKey);
-      return step.options.find(o => o.id === id);
+      const step = STEPS.find((s) => s.key === stepKey);
+      return step.options.find((o) => o.id === id);
     }
 
     function computeTotal() {
@@ -187,8 +320,8 @@
       total += findOpt('dough', state.selections.dough).price;
       total += findOpt('sauce', state.selections.sauce).price;
       total += findOpt('cheese', state.selections.cheese).price;
-      state.selections.toppings.forEach(id => total += findOpt('toppings', id).price);
-      state.selections.extras.forEach(id => total += findOpt('extras', id).price);
+      state.selections.toppings.forEach((id) => (total += findOpt('toppings', id).price));
+      state.selections.extras.forEach((id) => (total += findOpt('extras', id).price));
       return total;
     }
 
@@ -196,10 +329,8 @@
       const total = computeTotal();
       if (hasGSAP) {
         gsap.to(priceState, {
-          value: total, duration: 0.5, ease: 'power2.out',
-          onUpdate: () => {
-            els.priceValue.textContent = '$' + priceState.value.toFixed(2);
-          }
+          value: total, duration: 0.6, ease: 'power2.out',
+          onUpdate: () => { els.priceValue.textContent = '$' + priceState.value.toFixed(2); }
         });
       } else {
         els.priceValue.textContent = '$' + total.toFixed(2);
@@ -221,8 +352,37 @@
       els.stepLabels.appendChild(reviewSpan);
 
       const pct = state.inReview ? 100 : (state.stepIndex / STEPS.length) * 100;
-      if (hasGSAP) gsap.to(els.barFill, { width: pct + '%', duration: 0.5, ease: 'power2.out' });
+      if (hasGSAP) gsap.to(els.barFill, { width: pct + '%', duration: 0.6, ease: 'power3.out' });
       else els.barFill.style.width = pct + '%';
+    }
+
+    /* pre-render every possible topping dot once; selection just toggles .is-active,
+       matching PizzaVisual.jsx's always-mounted topping markers */
+    function buildToppingDots() {
+      els.pzToppings.innerHTML = '';
+      toppingStep.options.forEach((t, i) => {
+        const angle = (i / toppingStep.options.length) * 360 - 90;
+        const radius = TOPPING_RADII[i % TOPPING_RADII.length];
+        const rad = (angle * Math.PI) / 180;
+        const x = 50 + radius * Math.cos(rad);
+        const y = 50 + radius * Math.sin(rad);
+
+        const dot = document.createElement('div');
+        dot.className = 'topping-dot';
+        dot.dataset.id = t.id;
+        dot.style.left = x + '%';
+        dot.style.top = y + '%';
+        dot.style.setProperty('--delay', `${i * 0.03}s`);
+        dot.style.background = t.color;
+        dot.textContent = t.icon;
+        els.pzToppings.appendChild(dot);
+      });
+    }
+
+    function syncToppingDots() {
+      els.pzToppings.querySelectorAll('.topping-dot').forEach((dot) => {
+        dot.classList.toggle('is-active', state.selections.toppings.includes(dot.dataset.id));
+      });
     }
 
     function updatePizzaVisual() {
@@ -231,51 +391,11 @@
       const sauce = findOpt('sauce', state.selections.sauce);
       const cheese = findOpt('cheese', state.selections.cheese);
 
-      if (hasGSAP) {
-        gsap.to(els.pizza, { width: size.sizePct + '%', duration: 0.5, ease: 'back.out(1.6)' });
-      } else {
-        els.pizza.style.width = size.sizePct + '%';
-      }
+      els.pizza.style.width = size.sizePct + '%';
       els.pzCrust.style.background = dough.crust;
       els.pzSauce.style.background = sauce.color;
       els.pzCheese.style.background = cheese.color;
-
-      if (hasGSAP) {
-        gsap.fromTo([els.pzCrust, els.pzSauce, els.pzCheese],
-          { opacity: 0.4 }, { opacity: 1, duration: 0.35, stagger: 0.05 });
-      }
-
-      renderToppingDots();
-    }
-
-    function renderToppingDots() {
-      els.pzToppings.innerHTML = '';
-      const ids = state.selections.toppings;
-      const ring1 = ids.slice(0, 6);
-      ids.forEach((id, i) => {
-        const t = findOpt('toppings', id);
-        const count = ids.length;
-        const angleStep = 360 / Math.max(count, 1);
-        const angle = angleStep * i - 90;
-        const radius = 30; // % from center
-        const rad = (angle * Math.PI) / 180;
-        const x = 50 + radius * Math.cos(rad);
-        const y = 50 + radius * Math.sin(rad);
-
-        const dot = document.createElement('div');
-        dot.className = 'topping-dot';
-        dot.style.left = x + '%';
-        dot.style.top = y + '%';
-        dot.style.background = t.color;
-        dot.textContent = t.icon;
-        els.pzToppings.appendChild(dot);
-
-        if (hasGSAP) {
-          gsap.to(dot, { scale: 1, duration: 0.45, delay: i * 0.05, ease: 'elastic.out(1, 0.6)' });
-        } else {
-          dot.style.transform = 'translate(-50%, -50%) scale(1)';
-        }
-      });
+      syncToppingDots();
     }
 
     function renderOptions() {
@@ -284,7 +404,7 @@
       els.stepHint.textContent = step.hint;
       els.optionsGrid.innerHTML = '';
 
-      step.options.forEach(opt => {
+      step.options.forEach((opt) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'opt';
@@ -303,12 +423,15 @@
         els.optionsGrid.appendChild(btn);
       });
 
-      if (hasGSAP) {
-        gsap.from(els.optionsGrid.children, { y: 16, opacity: 0, duration: 0.4, stagger: 0.04, ease: 'power2.out' });
-      }
-
       els.btnBack.disabled = state.stepIndex === 0;
       els.btnNext.textContent = state.stepIndex === STEPS.length - 1 ? 'Review Order' : 'Next';
+
+      /* restart the CSS stepIn keyframe (equivalent to React's key={step} remount) */
+      if (els.stepPanel) {
+        els.stepPanel.style.animation = 'none';
+        void els.stepPanel.offsetHeight;
+        els.stepPanel.style.animation = '';
+      }
     }
 
     function handleSelect(step, opt, btn) {
@@ -332,17 +455,6 @@
       animatePrice();
     }
 
-    function transitionPanel(dir, cb) {
-      if (!hasGSAP) { cb(); return; }
-      gsap.to(els.body, {
-        opacity: 0, x: dir * -18, duration: 0.22, ease: 'power1.in',
-        onComplete: () => {
-          cb();
-          gsap.fromTo(els.body, { opacity: 0, x: dir * 18 }, { opacity: 1, x: 0, duration: 0.32, ease: 'power2.out' });
-        }
-      });
-    }
-
     function showReview() {
       state.inReview = true;
       els.body.hidden = true;
@@ -354,8 +466,8 @@
         ['Dough', findOpt('dough', state.selections.dough).name],
         ['Sauce', findOpt('sauce', state.selections.sauce).name],
         ['Cheese', findOpt('cheese', state.selections.cheese).name],
-        ['Toppings', state.selections.toppings.length ? state.selections.toppings.map(id => findOpt('toppings', id).name).join(', ') : 'None'],
-        ['Extras', state.selections.extras.length ? state.selections.extras.map(id => findOpt('extras', id).name).join(', ') : 'None']
+        ['Toppings', state.selections.toppings.length ? state.selections.toppings.map((id) => findOpt('toppings', id).name).join(', ') : 'None'],
+        ['Extras', state.selections.extras.length ? state.selections.extras.map((id) => findOpt('extras', id).name).join(', ') : 'None']
       ];
       rows.forEach(([label, val]) => {
         const li = document.createElement('li');
@@ -363,14 +475,11 @@
         els.reviewList.appendChild(li);
       });
 
-      const total = computeTotal();
-      els.reviewTotal.textContent = '$' + total.toFixed(2);
+      els.reviewTotal.textContent = '$' + computeTotal().toFixed(2);
       renderStepLabels();
 
       if (hasGSAP) {
-        gsap.from(els.review.querySelector('.builder__review-card'), {
-          y: 24, opacity: 0, duration: 0.5, ease: 'power3.out'
-        });
+        gsap.from(els.review.querySelector('.builder__review-card'), { y: 24, opacity: 0, duration: 0.5, ease: 'power3.out' });
         gsap.from(els.reviewList.children, { opacity: 0, x: -10, duration: 0.35, stagger: 0.06, delay: 0.15 });
       }
     }
@@ -383,24 +492,17 @@
     }
 
     els.btnNext.addEventListener('click', () => {
-      if (state.stepIndex === STEPS.length - 1) {
-        showReview();
-        return;
-      }
-      transitionPanel(1, () => {
-        state.stepIndex++;
-        renderOptions();
-        renderStepLabels();
-      });
+      if (state.stepIndex === STEPS.length - 1) { showReview(); return; }
+      state.stepIndex++;
+      renderOptions();
+      renderStepLabels();
     });
 
     els.btnBack.addEventListener('click', () => {
       if (state.stepIndex === 0) return;
-      transitionPanel(-1, () => {
-        state.stepIndex--;
-        renderOptions();
-        renderStepLabels();
-      });
+      state.stepIndex--;
+      renderOptions();
+      renderStepLabels();
     });
 
     els.btnEdit.addEventListener('click', backToBuilder);
@@ -419,6 +521,8 @@
     });
 
     // init
+    buildToppingDots();
+    state.selections.toppings = ['pepperoni', 'mushroom'];
     renderStepLabels();
     renderOptions();
     updatePizzaVisual();
@@ -426,8 +530,8 @@
 
     if (hasGSAP) {
       gsap.from('#builder', {
-        y: 30, opacity: 0, duration: 0.8, ease: 'power3.out',
-        scrollTrigger: { trigger: '#builder', start: 'top 82%' }
+        y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
+        scrollTrigger: { trigger: '#builder', start: 'top 88%' }
       });
     }
   }
@@ -456,9 +560,9 @@
     wheelPie.style.background = `conic-gradient(${gradientStops})`;
 
     FLAVORS.forEach((f, i) => {
-      const angle = i * step + step / 2; // mid-angle of each wedge, 0deg = top
+      const angle = i * step + step / 2;
       const rad = (angle * Math.PI) / 180;
-      const radius = 33; // % from center
+      const radius = 33;
       const x = 50 + radius * Math.sin(rad);
       const y = 50 - radius * Math.cos(rad);
 
@@ -480,16 +584,76 @@
 
     if (hasGSAP) {
       gsap.from('.slice-label', {
-        opacity: 0,
-        scale: 0.4,
-        duration: 0.6,
-        stagger: 0.09,
-        ease: 'back.out(1.6)',
+        opacity: 0, scale: 0.4, duration: 0.6, stagger: 0.09, ease: 'back.out(1.6)',
         scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
       });
       gsap.from(['.wheel__hub', '.wheel__pie'], {
         opacity: 0, scale: 0.6, duration: 0.6, ease: 'back.out(2)',
         scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
+      });
+    }
+  }
+
+  /* ==========================================================
+     TESTIMONIAL — word-by-word scroll scrub
+     ========================================================== */
+  const QUOTE = 'Every slice fits my mood perfectly. Pizza Puzzle solved my cravings in one bite.';
+  const testimonialQuote = document.getElementById('testimonialQuote');
+  if (testimonialQuote) {
+    testimonialQuote.innerHTML = QUOTE.split(' ')
+      .map((w) => `<span class="quote-word">${w}&nbsp;</span>`)
+      .join('');
+
+    if (hasGSAP) {
+      gsap.to('.quote-word', {
+        opacity: 1, stagger: 0.08, ease: 'none',
+        scrollTrigger: { trigger: '.testimonial', start: 'top 75%', end: 'top 20%', scrub: true }
+      });
+    }
+  }
+
+  /* ==========================================================
+     ABOUT / OUR STORY — side reveals, rotating blob, stat counters
+     ========================================================== */
+  const STATS = [
+    { value: 6, suffix: '+', label: 'Years Piecing Pizzas' },
+    { value: 300, suffix: 'K+', label: 'Puzzles Solved' },
+    { value: 10, suffix: '', label: 'City Locations' },
+    { value: 4.8, suffix: '★', label: 'Average Rating', decimals: 1 }
+  ];
+
+  const statsGrid = document.getElementById('statsGrid');
+  if (statsGrid) {
+    statsGrid.innerHTML = STATS.map((s) => `
+      <div class="stat-card">
+        <div class="stat-card__row">
+          <span class="stat-value" data-value="${s.value}" data-decimals="${s.decimals ?? 0}">0</span>
+          <span class="stat-suffix">${s.suffix}</span>
+        </div>
+        <span class="stat-label">${s.label}</span>
+      </div>
+    `).join('');
+
+    if (hasGSAP) {
+      gsap.from('.about__media', {
+        x: -60, opacity: 0, duration: 1, ease: 'power3.out',
+        scrollTrigger: { trigger: '.about__media', start: 'top 82%' }
+      });
+      gsap.from('.about__copy > *', {
+        x: 40, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out',
+        scrollTrigger: { trigger: '.about__copy', start: 'top 82%' }
+      });
+      gsap.to('.about__blob', { rotate: 360, duration: 40, repeat: -1, ease: 'none' });
+
+      document.querySelectorAll('.stat-value').forEach((el) => {
+        const target = parseFloat(el.dataset.value);
+        const decimals = parseInt(el.dataset.decimals || '0', 10);
+        const obj = { val: 0 };
+        gsap.to(obj, {
+          val: target, duration: 1.6, ease: 'power2.out',
+          scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+          onUpdate: () => { el.textContent = obj.val.toFixed(decimals); }
+        });
       });
     }
   }
