@@ -261,11 +261,15 @@ button{ font-family: inherit; cursor: pointer; }
 .builder__body{ display: flex; flex-direction: column; gap: 26px; }
 
 .builder__preview{ display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.pizza-stage{
+  position: relative; width: min(78vw, 280px); aspect-ratio: 1/1;
+}
 .pizza{
-  position: relative; width: min(72vw, 260px); aspect-ratio: 1/1;
+  position: absolute; top: 50%; left: 50%; width: 55%; aspect-ratio: 1/1;
+  transform: translate(-50%, -50%);
 }
 .pizza__plate{
-  position: absolute; inset: -14%;
+  position: absolute; inset: -5%;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 40%, #fff 55%, #efe6da 100%);
   box-shadow: 0 20px 40px rgba(31,26,27,.18), inset 0 0 0 1px rgba(31,26,27,.04);
@@ -370,7 +374,7 @@ button{ font-family: inherit; cursor: pointer; }
   .builder{ padding: 34px 34px 38px; }
   .builder__body{ flex-direction: row; align-items: flex-start; }
   .builder__preview{ position: sticky; top: 120px; flex: 0 0 300px; }
-  .pizza{ width: 280px; }
+  .pizza-stage{ width: 280px; }
   .builder__panel{ flex: 1; }
   .options{ grid-template-columns: repeat(4, 1fr); }
 }

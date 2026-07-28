@@ -78,10 +78,10 @@
     {
       key: 'size', title: 'Size', hint: 'How hungry is your mood today?', type: 'single',
       options: [
-        { id: 'personal', name: 'Personal 8"', price: 6.5, icon: '🍕', scale: 0.72 },
-        { id: 'medium', name: 'Medium 12"', price: 9.5, icon: '🍕', scale: 0.86 },
-        { id: 'large', name: 'Large 16"', price: 12.5, icon: '🍕', scale: 1 },
-        { id: 'family', name: 'Family 20"', price: 16.5, icon: '🍕', scale: 1.14 }
+        { id: 'personal', name: 'Personal 8"', price: 6.5, icon: '🍕', sizePct: 55 },
+        { id: 'medium', name: 'Medium 12"', price: 9.5, icon: '🍕', sizePct: 68 },
+        { id: 'large', name: 'Large 16"', price: 12.5, icon: '🍕', sizePct: 80 },
+        { id: 'family', name: 'Family 20"', price: 16.5, icon: '🍕', sizePct: 92 }
       ]
     },
     {
@@ -232,9 +232,9 @@
       const cheese = findOpt('cheese', state.selections.cheese);
 
       if (hasGSAP) {
-        gsap.to(els.pizza, { scale: size.scale, duration: 0.5, ease: 'back.out(1.6)' });
+        gsap.to(els.pizza, { width: size.sizePct + '%', duration: 0.5, ease: 'back.out(1.6)' });
       } else {
-        els.pizza.style.transform = `scale(${size.scale})`;
+        els.pizza.style.width = size.sizePct + '%';
       }
       els.pzCrust.style.background = dough.crust;
       els.pzSauce.style.background = sauce.color;
