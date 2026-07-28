@@ -229,24 +229,10 @@ button{ font-family: inherit; cursor: pointer; }
 }
 .marquee__track{ display: flex; width: max-content; }
 .marquee__item{
-  display: inline-flex; align-items: center; gap: 14px;
+  display: inline-block;
   font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   text-transform: uppercase; letter-spacing: .03em;
   padding-inline: 22px; white-space: nowrap;
-}
-.marquee__dot{ font-size: 1rem; }
-
-/* ===== feature strip ===== */
-.strip{ background: var(--white); padding: 46px 0; border-bottom: 1px solid rgba(31,26,27,.06); }
-.strip__inner{
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px;
-}
-.strip__item{ display: flex; align-items: center; gap: 14px; }
-.strip__icon{ font-size: 1.8rem; }
-.strip__item p{ display: flex; flex-direction: column; font-size: .84rem; color: #7a6f70; }
-.strip__item strong{ font-family: var(--font-display); font-size: 1rem; color: var(--dark); }
-@media (min-width: 720px){
-  .strip__inner{ grid-template-columns: repeat(4, 1fr); }
 }
 
 /* ===== featured pizzas ===== */

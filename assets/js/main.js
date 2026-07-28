@@ -111,15 +111,7 @@
       scrollTrigger: { trigger: '.cta-band', start: 'top 85%' }
     });
 
-    gsap.utils.toArray('.strip__item').forEach((el, i) => {
-      gsap.from(el, {
-        y: 24, opacity: 0, duration: 0.7, delay: i * 0.06, ease: 'power2.out',
-        scrollTrigger: { trigger: '.strip', start: 'top 85%' }
-      });
-    });
-
     gsap.utils.toArray('[data-reveal]').forEach((el) => {
-      if (el.classList.contains('strip__item')) return;
       gsap.from(el, {
         y: 40, opacity: 0, duration: 0.8, ease: 'power3.out',
         scrollTrigger: { trigger: el, start: 'top 88%' }
@@ -143,7 +135,7 @@
   if (marqueeTrack) {
     const loop = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
     marqueeTrack.innerHTML = loop
-      .map((item) => `<span class="marquee__item">${item}<span class="marquee__dot">🧩</span></span>`)
+      .map((item) => `<span class="marquee__item">${item}</span>`)
       .join('');
 
     if (hasGSAP) {
