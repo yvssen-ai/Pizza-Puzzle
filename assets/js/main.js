@@ -165,7 +165,7 @@
       name: 'Veggie Puzzle',
       price: '$14.90',
       desc: 'Bell peppers, onion, mushroom, olives, mozzarella.',
-      swatch: { color: '#4c9a4c', icon: '🫑' }
+      img: 'assets/img/hero-sunset.jpg'
     }
   ];
 
@@ -173,9 +173,8 @@
   if (pizzaGrid) {
     pizzaGrid.innerHTML = PIZZAS.map((p) => `
       <article class="pizza-card">
-        <div class="pizza-card__media${p.swatch ? ' pizza-card__media--swatch' : ''}"
-          ${p.swatch ? `style="background:${p.swatch.color}"` : ''}>
-          ${p.img ? `<img src="${p.img}" alt="${p.name} — Pizza Puzzle" loading="lazy">` : p.swatch.icon}
+        <div class="pizza-card__media">
+          <img src="${p.img}" alt="${p.name} — Pizza Puzzle" loading="lazy">
         </div>
         <div class="pizza-card__footer">
           <div>
