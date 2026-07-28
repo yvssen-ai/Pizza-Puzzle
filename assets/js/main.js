@@ -74,6 +74,12 @@
   /* ==========================================================
      HERO — entrance timeline, parallax, rotating badge
      ========================================================== */
+  const heroVideo = document.querySelector('.hero__img');
+  if (heroVideo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    heroVideo.pause();
+    heroVideo.removeAttribute('autoplay');
+  }
+
   if (hasGSAP) {
     const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
     tl.fromTo('.hero__img', { scale: 1.25 }, { scale: 1.05, duration: 2.6, ease: 'power2.out' })
