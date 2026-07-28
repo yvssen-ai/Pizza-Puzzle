@@ -542,64 +542,6 @@
   }
 
   /* ==========================================================
-     FLAVOR WHEEL — pinwheel of signature slices
-     ========================================================== */
-  const FLAVORS = [
-    { name: 'Pepperoni Rush', tag: 'Bestseller', color: '#b3291a', icon: '🍕' },
-    { name: 'BBQ Chicken', tag: 'Smoky', color: '#7a3418', icon: '🍗' },
-    { name: 'Cheese Storm', tag: 'Classic', color: '#f4d883', icon: '🧀' },
-    { name: 'Veggie Puzzle', tag: 'Garden', color: '#4c9a4c', icon: '🫑' },
-    { name: 'Spicy Arrabbiata', tag: 'Hot Mood', color: '#a11e10', icon: '🌶️' },
-    { name: 'Tropical Mood', tag: 'Sweet & Salty', color: '#e8c93c', icon: '🍍' },
-    { name: 'Garlic Cream', tag: 'Cozy', color: '#e8dcc0', icon: '🧄' },
-    { name: 'Mushroom Melt', tag: 'Earthy', color: '#caa27a', icon: '🍄' }
-  ];
-
-  const wheelSlices = document.getElementById('wheelSlices');
-  const wheelPie = document.getElementById('wheelPie');
-  if (wheelSlices && wheelPie) {
-    const n = FLAVORS.length;
-    const step = 360 / n;
-
-    const gradientStops = FLAVORS.map((f, i) => `${f.color} ${i * step}deg ${(i + 1) * step}deg`).join(', ');
-    wheelPie.style.background = `conic-gradient(${gradientStops})`;
-
-    FLAVORS.forEach((f, i) => {
-      const angle = i * step + step / 2;
-      const rad = (angle * Math.PI) / 180;
-      const radius = 33;
-      const x = 50 + radius * Math.sin(rad);
-      const y = 50 - radius * Math.cos(rad);
-
-      const label = document.createElement('div');
-      label.className = 'slice-label';
-      label.style.left = x + '%';
-      label.style.top = y + '%';
-
-      const inner = document.createElement('div');
-      inner.className = 'slice-label__inner';
-      inner.innerHTML = `
-        <span class="slice-label__icon">${f.icon}</span>
-        <span class="slice-label__name">${f.name}</span>
-        <span class="slice-label__tag">${f.tag}</span>
-      `;
-      label.appendChild(inner);
-      wheelSlices.appendChild(label);
-    });
-
-    if (hasGSAP) {
-      gsap.from('.slice-label', {
-        opacity: 0, scale: 0.4, duration: 0.6, stagger: 0.09, ease: 'back.out(1.6)',
-        scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
-      });
-      gsap.from(['.wheel__hub', '.wheel__pie'], {
-        opacity: 0, scale: 0.6, duration: 0.6, ease: 'back.out(2)',
-        scrollTrigger: { trigger: '#wheelStage', start: 'top 80%' }
-      });
-    }
-  }
-
-  /* ==========================================================
      TESTIMONIAL — word-by-word scroll scrub
      ========================================================== */
   const QUOTE = 'Every slice fits my mood perfectly. Pizza Puzzle solved my cravings in one bite.';
